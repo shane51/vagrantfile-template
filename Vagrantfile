@@ -9,10 +9,11 @@ Vagrant.configure(2) do |config|
   config.vm.box         = "ubuntu/xenial64"
   config.vm.define "AppiumParallel"
 
-  # Set memory to 1024
-  # Allow I/O APIC
+
   config.vm.provider :virtualbox do |v|
     v.name = 'appiumParallel_ubuntu'
+   # Set memory to 4096
+   # Allow I/O APIC
     v.customize ['modifyvm', :id, '--memory', '4096', '--ioapic', 'on']
     # Enable the VM's virtual USB controller & enable the virtual USB 2.0 controller
     v.customize ["modifyvm", :id, "--usb", "on", "--usbehci", "on"]
