@@ -2,6 +2,15 @@ import subprocess
 import re
 import os
 
+
+test_code_repo_name = "LucaTester"
+host_home_path = os.environ['HOME']
+host_adb_key_path = "" + host_home_path + "/.android"
+test_code_src_path = "" + host_home_path + "/" + test_code_repo_name + "/"
+test_code_dest_path = "/opt/"
+cmd_to_run = "" + test_code_dest_path + test_code_repo_name + "/" + "main.py"
+
+
 outputs = subprocess.check_output("lsusb")
 
 
@@ -9,7 +18,7 @@ def device_map(lsusboutputs):
     usbinfo_array = lsusboutputs.split('\n')
     device_list = {}
     if not usbinfo_array:
-        print("No usb find. Please check the your usb settings!")
+        print("No usb find. Please check your usb settings!")
         return {}
 
     for usbinfo in usbinfo_array:
@@ -36,9 +45,12 @@ def docker_clear_all_device_container(device_list):
     return device_list
 
 
-def docker_run_parallel_with_binding_device(device_list):
-    home_path = os.environ['HOME']
+def docker_run_parallel_with_binding_device(device_list, adb_key_path):
     appium_image_name = "appium/appium-python"
+
+    if not device_list:
+        print("docker run error! No devices find. Please check your device is connected!")
+        return {}
 
     shutdown_adb = subprocess.check_call(["sudo", "adb", "kill-server"])
 
@@ -54,7 +66,7 @@ def docker_run_parallel_with_binding_device(device_list):
         container_name = key
         device_mapping = device_list[key]
         status_code = subprocess.call(["docker", "run", "-d", "--name", container_name, "-v",
-                                       home_path + "/.android:/root/.android", "--device=" + device_mapping,
+                                       adb_key_path + ":/root/.android", "--device=" + device_mapping,
                                        appium_image_name])
         if status_code == 0:
             print("Start docker: " + container_name + " successfully")
@@ -65,6 +77,44 @@ def docker_run_parallel_with_binding_device(device_list):
     return device_list
 
 
+def docker_cp_test_code_into_container(device_list, src_path, dest_path):
+
+    if not device_list:
+        print("docker cp error! No devices find. Please check your device is connected!")
+        return {}
+
+    for key in device_list:
+        container_name = key
+        status_code = subprocess.call(["docker", "cp", src_path, container_name + ":" + dest_path])
+        if status_code == 0:
+            print(" Copy test code into " + container_name + " successfully")
+        else:
+            print(" Copy test code into " + container_name + " failed. Status code: " + str(status_code))
+            device_list.pop(key)
+
+    return device_list
+
+
+def docker_run_test_in_container(device_list, script):
+
+    if not device_list:
+        print("docker exec error! No devices find. Please check your device is connected!")
+        return {}
+
+    for key in device_list:
+        container_name = key
+        status_code = subprocess.call(["docker", "exec", "-d", container_name, "python", script])
+        if status_code == 0:
+            print(" Start test in " + container_name + " successfully")
+        else:
+            print(" Start test in " + container_name + " failed. Status code: " + str(status_code))
+            device_list.pop(key)
+
+    return device_list
+
+
 devices = device_map(outputs)
-print(devices)
-docker_run_parallel_with_binding_device(devices)
+print("Find devices: " + str(devices))
+docker_run_parallel_with_binding_device(devices, host_adb_key_path)
+docker_cp_test_code_into_container(devices, test_code_src_path, test_code_dest_path)
+docker_run_test_in_container(devices, cmd_to_run)
