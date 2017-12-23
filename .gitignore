@@ -1,0 +1,10 @@
+### ignore all vagrant hiden files
+.vagrant/
+
+
+### ignore Intellij related files
+.idea/
+
+
+### ignore log files
+*.log
