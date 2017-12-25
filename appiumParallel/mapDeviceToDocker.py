@@ -4,6 +4,8 @@ import os
 from functools import partial
 from multiprocessing.dummy import Pool as ThreadPool
 
+appium_image_name = "appium/appium-python"
+
 test_code_repo_name = "LucaTester"
 host_home_path = os.environ['HOME']
 host_adb_key_path = "" + host_home_path + "/.android"
@@ -47,8 +49,6 @@ def docker_clear_all_device_container(device_list):
 
 
 def docker_run_parallel_with_binding_device(device_list, adb_key_path):
-    appium_image_name = "appium/appium-python"
-
     if not device_list:
         print("docker run error! No devices find. Please check your device is connected!")
         return {}
@@ -67,8 +67,8 @@ def docker_run_parallel_with_binding_device(device_list, adb_key_path):
         container_name = key
         device_mapping = device_list[key]
         cmd = ["docker", "run", "-d", "--name", container_name, "-v",
-                                       adb_key_path + ":/root/.android", "--device=" + device_mapping,
-                                       appium_image_name]
+               adb_key_path + ":/root/.android", "--device=" + device_mapping,
+               appium_image_name]
         status_code = subprocess.call(cmd)
         if status_code == 0:
             print("Start docker: " + container_name + " successfully")
