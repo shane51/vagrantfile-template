@@ -1,7 +1,8 @@
 import subprocess
 import re
 import os
-
+from functools import partial
+from multiprocessing.dummy import Pool as ThreadPool
 
 test_code_repo_name = "LucaTester"
 host_home_path = os.environ['HOME']
@@ -9,7 +10,6 @@ host_adb_key_path = "" + host_home_path + "/.android"
 test_code_src_path = "" + host_home_path + "/" + test_code_repo_name + "/"
 test_code_dest_path = "/opt/"
 cmd_to_run = "" + test_code_dest_path + test_code_repo_name + "/" + "main.py"
-
 
 outputs = subprocess.check_output("lsusb")
 
@@ -77,8 +77,7 @@ def docker_run_parallel_with_binding_device(device_list, adb_key_path):
     return device_list
 
 
-def docker_cp_test_code_into_container(device_list, src_path, dest_path):
-
+def docker_cp_test_code_into_container_parallel(device_list, src_path, dest_path):
     if not device_list:
         print("docker cp error! No devices find. Please check your device is connected!")
         return {}
@@ -95,8 +94,7 @@ def docker_cp_test_code_into_container(device_list, src_path, dest_path):
     return device_list
 
 
-def docker_run_test_in_container(device_list, script):
-
+def docker_run_test_in_container_parallel(device_list, script):
     if not device_list:
         print("docker exec error! No devices find. Please check your device is connected!")
         return {}
@@ -113,8 +111,32 @@ def docker_run_test_in_container(device_list, script):
     return device_list
 
 
+def docker_run_test_in_container_foreground(device, script):
+    if not device:
+        print("docker exec error! No devices find. Please check your device is connected!")
+        return {}
+
+    container_name = device[0]
+    status_code = subprocess.call(["docker", "exec", container_name, "python", script])
+    if status_code == 0:
+        print(" run test in " + container_name + " successfully")
+        return 0
+    else:
+        print(" run test in " + container_name + " failed. Status code: " + str(status_code))
+        return 1
+
+
 devices = device_map(outputs)
 print("Find devices: " + str(devices))
-docker_run_parallel_with_binding_device(devices, host_adb_key_path)
-docker_cp_test_code_into_container(devices, test_code_src_path, test_code_dest_path)
-docker_run_test_in_container(devices, cmd_to_run)
+devices = docker_run_parallel_with_binding_device(devices, host_adb_key_path)
+devices = docker_cp_test_code_into_container_parallel(devices, test_code_src_path, test_code_dest_path)
+print("Devices to run" + str(devices.keys()))
+
+pool = ThreadPool(len(devices))
+
+results = pool.map(partial(docker_run_test_in_container_foreground, script=cmd_to_run), devices.items())
+
+pool.close()
+pool.join()
+
+print(results)
