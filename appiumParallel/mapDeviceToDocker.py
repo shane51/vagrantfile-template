@@ -24,7 +24,7 @@ def device_map(lsusboutputs):
         return {}
 
     for usbinfo in usbinfo_array:
-        if not usbinfo.count('root hub'):
+        if not usbinfo.count('root hub') + usbinfo.count('VMware'):
             temp = re.match(r'Bus (\d*) Device (\d*): \w* (\w*):(\w*)', usbinfo)
 
             if temp:
@@ -121,11 +121,12 @@ devices = docker_run_parallel_with_binding_device(devices, host_adb_key_path)
 devices = docker_cp_test_code_into_container_parallel(devices, test_code_src_path, test_code_dest_path)
 print("Devices to run" + str(devices.keys()))
 
-pool = ThreadPool(len(devices))
+if devices:
+    pool = ThreadPool(len(devices))
 
-results = pool.map(partial(docker_run_test_in_container_foreground, script=cmd_to_run), devices.items())
+    results = pool.map(partial(docker_run_test_in_container_foreground, script=cmd_to_run), devices.items())
 
-pool.close()
-pool.join()
+    pool.close()
+    pool.join()
 
-print(results)
+    print(results)
