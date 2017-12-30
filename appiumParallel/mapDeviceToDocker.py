@@ -35,17 +35,29 @@ def device_map(lsusboutputs):
     return device_list
 
 
-def docker_clear_all_device_container(device_list):
-    for key in device_list:
-        container_name = key
-        cmd = ["docker", "rm", "-f", container_name]
-        status_code = subprocess.call(cmd)
-        if status_code == 0:
-            print("rm docker: " + container_name + " successfully")
-        else:
-            print("rm docker: " + container_name + " failed. Status code: " + str(status_code))
-            device_list.pop(key)
-    return device_list
+def docker_clear_all_device_container():
+    cmd = ["docker", "ps", "-a"]
+    output = subprocess.check_output(cmd)
+    container_info_list = output.split('\n')
+    del container_info_list[0]
+    if not container_info_list:
+        print("Do not need to remove container. No container exists")
+        return
+
+    container_id_list = []
+
+    for container_info in container_info_list:
+        con_id = container_info.split(' ')[0]
+        container_id_list.append(con_id)
+
+    for container_id in container_id_list:
+        if container_id:
+            cmd = ["docker", "rm", "-f", container_id]
+            status_code = subprocess.call(cmd)
+            if status_code == 0:
+                print("rm docker: " + container_id + " successfully")
+            else:
+                print("rm docker: " + container_id + " failed. Status code: " + str(status_code))
 
 
 def docker_run_parallel_with_binding_device(device_list, adb_key_path):
@@ -61,7 +73,7 @@ def docker_run_parallel_with_binding_device(device_list, adb_key_path):
 
     print("stop host adb successfully")
 
-    docker_clear_all_device_container(device_list)
+    docker_clear_all_device_container()
 
     for key in device_list:
         container_name = key
