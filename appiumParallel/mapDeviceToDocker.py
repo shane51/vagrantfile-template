@@ -29,7 +29,7 @@ def device_map(lsusboutputs):
 
             if temp:
                 usb_location = '/dev/bus/usb/' + temp.group(1) + '/' + temp.group(2) + ':/dev/bus/usb/001/001'
-                usb_id = temp.group(3) + temp.group(4)
+                usb_id = temp.group(3) + temp.group(4) + temp.group(1) + temp.group(2)
                 device_list[usb_id] = usb_location
 
     return device_list
