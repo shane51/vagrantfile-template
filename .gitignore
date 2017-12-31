@@ -12,3 +12,7 @@
 
 ### ignore Mac temp file
 .DS_Store
+
+
+### ignore python virtual env
+venv/
