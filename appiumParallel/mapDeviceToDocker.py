@@ -35,8 +35,8 @@ def device_map(lsusboutputs):
     return device_list
 
 
-def docker_clear_all_device_container():
-    cmd = ["docker", "ps", "-a"]
+def docker_clear_all_device_container_start_with(image_name):
+    cmd = ["docker", "ps", "--filter", "ancestor=" + image_name]
     output = subprocess.check_output(cmd)
     container_info_list = output.split('\n')
     del container_info_list[0]
@@ -73,7 +73,7 @@ def docker_run_parallel_with_binding_device(device_list, adb_key_path):
 
     print("stop host adb successfully")
 
-    docker_clear_all_device_container()
+    docker_clear_all_device_container_start_with(appium_image_name)
 
     for key in device_list:
         container_name = key
