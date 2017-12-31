@@ -3,21 +3,35 @@ import re
 import os
 from functools import partial
 from multiprocessing.dummy import Pool as ThreadPool
+import argparse
+
+import time
+
+parser = argparse.ArgumentParser(description='Run test in docker')
+
+parser.add_argument(dest='filenames', metavar='filename', nargs='*')
+parser.add_argument('-D', '--dir', metavar='Directory', required=True,
+                    dest='directory', action='append',
+                    help='root directory of test project')
+
+args = parser.parse_args()
+print(args.directory)
+print(args.filenames)
 
 appium_image_name = "appium/appium-python"
 
-test_code_repo_name = "LucaTester"
 host_home_path = os.environ['HOME']
 host_adb_key_path = "" + host_home_path + "/.android"
-test_code_src_path = "" + host_home_path + "/" + test_code_repo_name + "/"
+test_code_src_path = "" + args.directory[0] or "" + host_home_path + "/" + "LucaTester/"
 test_code_dest_path = "/opt/"
-cmd_to_run = ["python", test_code_dest_path + test_code_repo_name + "/" + "main.py"]
+
+cmd_to_run = ["python3", "-m", "pytest", test_code_dest_path + args.filenames[0]]
 
 outputs = subprocess.check_output("lsusb")
 
 
 def device_map(lsusboutputs):
-    usbinfo_array = lsusboutputs.split('\n')
+    usbinfo_array = lsusboutputs.decode().split('\n')
     device_list = {}
     if not usbinfo_array:
         print("No usb find. Please check your usb settings!")
@@ -38,7 +52,7 @@ def device_map(lsusboutputs):
 def docker_clear_all_device_container_start_with(image_name):
     cmd = ["docker", "ps", "--filter", "ancestor=" + image_name]
     output = subprocess.check_output(cmd)
-    container_info_list = output.split('\n')
+    container_info_list = output.decode().split('\n')
     del container_info_list[0]
     if not container_info_list:
         print("Do not need to remove container. No container exists")
@@ -98,7 +112,7 @@ def docker_cp_test_code_into_container_parallel(device_list, src_path, dest_path
 
     for key in device_list:
         container_name = key
-        cmd = ["docker", "cp", src_path, container_name + ":" + dest_path]
+        cmd = ["docker", "cp", src_path + '.', container_name + ":" + dest_path]
         status_code = subprocess.call(cmd)
         if status_code == 0:
             print(" Copy test code into " + container_name + " successfully")
@@ -127,10 +141,15 @@ def docker_run_test_in_container_foreground(device, script):
         return 1
 
 
+def wait_appium_start(seconds):
+    time.sleep(seconds)
+
+
 devices = device_map(outputs)
 print("Find devices: " + str(devices))
 devices = docker_run_parallel_with_binding_device(devices, host_adb_key_path)
 devices = docker_cp_test_code_into_container_parallel(devices, test_code_src_path, test_code_dest_path)
+wait_appium_start(10)
 print("Devices to run" + str(devices.keys()))
 
 if devices:
