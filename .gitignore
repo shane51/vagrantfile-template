@@ -1,5 +1,6 @@
 ### ignore all vagrant hiden files
 .vagrant/
+*.box
 
 
 ### ignore Intellij related files
@@ -8,3 +9,6 @@
 
 ### ignore log files
 *.log
+
+### ignore Mac temp file
+.DS_Store
